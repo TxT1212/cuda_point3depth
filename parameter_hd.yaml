@@ -1,0 +1,28 @@
+%YAML:1.0
+---
+rotation: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 9.9999877528156433e-01, -1.4335210939984643e-03, 6.2805465087220418e-04, 
+        1.4366074439919297e-03,9.9998675846191487e-01, -4.9415645178133762e-03,
+       -6.2096249748896622e-04, 4.9424607337748890e-03, 9.9998759316677110e-01 ]
+translation: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [ -3.1967726052338725e-02, -4.8644054452110209e-02, 2.4817928458785964e-03 ]
+width: 960
+height: 720
+fx: 899.3886
+fy: 899.65515
+px: 470.9219
+py: 365.86145
+campose_path: "opt_pose1.txt"
+
+cloud_path: "pointcloud_3.ply"
+frame_select_path: "/home/txt/Desktop/FramesSelect/readroom2.txt"
+ws_folder: "/media/txt/data1/data/readroom2/out/"
+depth_out_path: "HD/Depth"
+pseudocolor_out_path: "HD/RGB"
+frame_name: "frame_new_"
