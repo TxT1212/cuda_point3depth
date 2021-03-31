@@ -19,10 +19,10 @@ fy: 899.65515
 px: 470.9219
 py: 365.86145
 campose_path: "opt_pose1.txt"
-
-cloud_path: "pointcloud_3.ply"
-frame_select_path: "/home/txt/Desktop/FramesSelect/readroom2.txt"
-ws_folder: "/media/txt/data1/data/readroom2/out/"
+associations: "associations_tof.txt"
+cloud_path: "pointcloud_structual.ply"
+frame_select_path: "/home/txt/Desktop/FramesSelect/fakeface3.txt"
+ws_folder: "/media/txt/data2/data2/fakeface3/out/"
 depth_out_path: "HD/Depth"
 pseudocolor_out_path: "HD/RGB"
 frame_name: "frame_new_"

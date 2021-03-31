@@ -2,7 +2,7 @@ project(cuda_boost)
 
 find_package(CUDA QUIET REQUIRED)
 set(CMAKE_C_COMPILER /usr/bin/gcc-5)
-set(CMAKE_CXX_COMPILER /usr/bin/g++-5)
+set(CMAKE_CXX_COMPILER /usr/bin/g++-5) 
 set(CUDA_SEPARABLE_COMPILATION ON)
 set(
         CUDA_NVCC_FLAGS 
@@ -30,7 +30,7 @@ cuda_add_library(cuda_boost STATIC ${CURRENT_HEADERS} ${CURRENT_SOURCES})
 
 target_link_libraries(
     cuda_boost
-    -lcudadevrt
-    -lcudart
+    # -lcudadevrt
+    # -lcudart
     ${CUDA_LIBRARIES}
    ) 

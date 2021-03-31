@@ -89,8 +89,8 @@ int main(int argc, char **argv)
     double py = Settings["py"];
     string ws_folder = Settings["ws_folder"];
     string campose_path = ws_folder + Settings["campose_path"];
+    // string associations = ws_folder + Settings["associations"];
     std::vector<std::vector<std::string>> associations = ReadSpaceSeparatedText(ws_folder + Settings["associations"]);
-    std::vector<std::vector<std::string>> frameSelected = ReadSpaceSeparatedText(Settings["frame_select_path"]);
     string cloud_path = ws_folder + Settings["cloud_path"];
     string frame_select_path = Settings["frame_select_path"];
     string depth_out_path = ws_folder + Settings["depth_out_path"];
@@ -209,22 +209,20 @@ int main(int argc, char **argv)
     cudaMemcpy((void *)d_faces, (void *)faces, nbytes_faces, cudaMemcpyHostToDevice);
     ifstream in_frame_select(frame_select_path, ios::in);
     std::vector<int> frames_selected;
-    std::vector<string> frames_selected_str;
+    std::vector<int> rawframes_selected;
     int nowFrameSelected = 0;
-    string nowFrameSelected_str;
     int rawNum, depthNum;
     if (in_frame_select.is_open())
     {
-        cout << "select frames: " << frame_select_path << " " << endl;
-        // while (!in_frame_select.eof())
-        // {
-        //     in_frame_select >> nowFrameSelected_str;
-
-        //     rawNum = depthNum / 3;
-        //     // in_frame_select >> rawNum >> depthNum;
-        //     frames_selected.push_back(depthNum * 10000 + rawNum);
-        // }
-        // cout << "size: " << frames_selected.size() << endl;
+        cout << "select frames: " << frame_select_path << " ";
+        while (!in_frame_select.eof())
+        {
+            in_frame_select >> depthNum;
+            rawNum = depthNum / 3;
+            // in_frame_select >> rawNum >> depthNum;
+            frames_selected.push_back(depthNum * 10000 + rawNum);
+        }
+        cout << "size: " << frames_selected.size() << endl;
     }
     else
     {
@@ -236,29 +234,17 @@ int main(int argc, char **argv)
         cout << "Cannot open the file \"" << campose_path << "\".\n";
         exit(1);
     }
-    // sort(frames_selected.begin(), frames_selected.end());
-    int now_frameSelected = 0;
+    sort(frames_selected.begin(), frames_selected.end());
+
     while (!in.eof())
     {
         in >> num;
         in >> T(0) >> T(1) >> T(2) >> tmp(0) >> tmp(1) >> tmp(2) >> tmp(3);
-        // if (in_frame_select.is_open())
+        if (!frames_selected.empty())
         {
-            string now_frameSelected_str = frameSelected[now_frameSelected][0].substr(frameSelected[now_frameSelected][0].find('1'), 17);
-
-            cout << " " << associations[num][0] << " " << now_frameSelected_str << endl;
-            if (associations[num][0] < now_frameSelected_str)
+            if (frames_selected[nowFrameSelected] / 10000 != num)
             {
                 continue;
-            }
-            else if (associations[num][0] == now_frameSelected_str)
-            {
-                now_frameSelected++;
-            }
-            else
-            {
-                cout << "some thing wrong: " << associations[num][0] << " " << now_frameSelected_str << endl;
-                exit(-1);
             }
         }
         cout << "frame:" << num << endl;
@@ -294,10 +280,34 @@ int main(int argc, char **argv)
             }
 
         depth.convertTo(depth, CV_16UC1);
-        cout << associations[num][0] << endl;
-        sprintf(name, "%s/%s%s.png", depth_out_path_c, frame_name.c_str(), associations[num][0].c_str());
-        cout << name << endl;
-        imwrite(name, depth);
+
+        if (!frames_selected.empty())
+        {
+            while (frames_selected[nowFrameSelected] / 10000 == num)
+            {
+                sprintf(name, "%s/%s%05d.png", depth_out_path_c, frame_name.c_str(), frames_selected[nowFrameSelected] % 10000);
+                cout << string(name) << endl;
+                cout << depth.type() << endl;
+                imwrite(name, depth);
+                Mat newDepth = imread(name, -1);
+                cout << newDepth.type() << endl;
+                nowFrameSelected++;
+            }
+            if (nowFrameSelected >= frames_selected.size())
+            {
+                break;
+            }
+        }
+        else
+        {
+            // float timeStamp_now  = std::stof(associations[num][0]);
+            cout << associations[num][0] << endl;
+
+            sprintf(name, "%s/%s%s.png", depth_out_path_c, frame_name.c_str(), associations[num][0].c_str());
+            cout << name << endl;
+            imwrite(name, depth);
+        }
+
         depth.convertTo(depth, CV_32SC1);
     }
 
