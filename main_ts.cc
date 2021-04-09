@@ -28,7 +28,7 @@ std::vector<std::vector<std::string>> ReadSpaceSeparatedText(std::string filepat
     if (!file)
     {
         std::cerr << "fail to open file" << filepath << std::endl;
-        exit(1);
+        // exit(1);
     }
 
     std::vector<std::vector<std::string>> file_content; //存储每个数据的数据结构
@@ -75,7 +75,9 @@ public:
         {
             return true;
         }
+        cout << num << endl;
         string now_frameSelected_str = frameSelected[now_select][0].substr(frameSelected[now_select][0].find('1'), 17);
+        cout << now_frameSelected_str << endl;
         if (associations[num][0] < now_frameSelected_str)
         {
             return false;
@@ -96,10 +98,11 @@ public:
 Selected_Frame_Controler::Selected_Frame_Controler(FileStorage &Settings)
 {
     string ws_folder = Settings["ws_folder"];
-    std::vector<std::vector<std::string>> associations = ReadSpaceSeparatedText(ws_folder + Settings["associations"]);
-    std::vector<std::vector<std::string>> frameSelected = ReadSpaceSeparatedText(Settings["frame_select_path"]);
+    associations = ReadSpaceSeparatedText(ws_folder + Settings["associations"]);
+    frameSelected = ReadSpaceSeparatedText(Settings["frame_select_path"]);
     ifSelected = !frameSelected.empty();
     now_select = 0;
+    cout << frameSelected.size() << " " << associations.size() << endl;
 }
 
 Selected_Frame_Controler::~Selected_Frame_Controler()
@@ -274,7 +277,6 @@ int main(int argc, char **argv)
         {
             continue;
         }
-        
 
         cout << "frame:" << num << endl;
 
@@ -326,12 +328,18 @@ int main(int argc, char **argv)
         depth.convertTo(mask, CV_8UC1);
         rgb_out.copyTo(rgb_out, mask);
         depth.convertTo(depth_out, CV_16UC1);
-        imshow(" 1", rgb_out);
-        waitKey();
+        // imshow(" 1", rgb_out);
+        // waitKey();
 
         string name = depth_out_path + "/" + frame_name + associations[num][0] + ".png";
         cout << name << endl;
         imwrite(name, depth_out);
+        name = depth_out_path + "/" + frame_name + associations[num][0] + "rgb.png";
+        int if_write_rgb = Settings["write_rgb"];
+        if (if_write_rgb)
+        {
+            imwrite(name, rgb_out);
+        }
     }
 
     cudaFree(d_points_W_XYZ);
