@@ -196,11 +196,11 @@ void getpointsparam(Eigen::Vector3d* d_points_W_XYZ, Eigen::Vector3d* d_points_C
 	dim3 blocksize(256);
 	dim3 gridsize((N + blocksize.x - 1) / blocksize.x);
 
-	getpointsparamDevice << < gridsize, blocksize >> >(d_points_W_XYZ, d_points_C_XYZ, d_points_u, d_points_v, d_points_valid, W2L, N, width, height, fx, fy, px, py);
+	getpointsparamDevice <<< gridsize, blocksize >>>(d_points_W_XYZ, d_points_C_XYZ, d_points_u, d_points_v, d_points_valid, W2L, N, width, height, fx, fy, px, py);
     cudaDeviceSynchronize();
 }
 
-__global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_depth, bool* d_points_valid, double* d_points_u, double* d_points_v, Eigen::Vector3d* d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py)
+__global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_depth, bool* d_points_valid, double* d_points_u, double* d_points_v, Eigen::Vector3d* d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py, int* face_result)
 {
 	const int threadID = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -225,8 +225,9 @@ __global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_de
 			min_u = min(d_points_u[point_num1], min(d_points_u[point_num2], d_points_u[point_num3]));
 			min_v = min(d_points_v[point_num1], min(d_points_v[point_num2], d_points_v[point_num3]));
 
-			for(int u = int(min_u); u <= (int(max_u) + 1); u++)
-				for(int v = int(min_v); v <= (int(max_v) + 1); v++)
+			for(int u = int(min_u); u <= (int(max_u) + 1); u++){
+                for(int v = int(min_v); v <= (int(max_v) + 1); v++)
+                {
 					if(u >= 0 && v >= 0 && u < width && v < height)
 					{
 						GeoPoint p1(d_points_u[point_num1], d_points_v[point_num1], 0);
@@ -258,12 +259,18 @@ __global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_de
 
 							if(joint.z > 0)
 							{
-								atomicMin((int*)(d_depth + 4 * (width*v + u)), (int)(joint.z * 1000));
+                                int old = atomicMin((int*)(d_depth + 4 * (width*v + u)), (int)(joint.z * 1000));
+                                if(old > joint.z * 1000)
+                                {
+                                    face_result[width*v + u] = threadID;
+                                }
+
 							}
 						}
 					}
-
-		}
+                }
+            }
+        }
 
 	}
 	else
@@ -273,12 +280,12 @@ __global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_de
 
 }
 
-void getimagedata(Eigen::Vector3d* d_faces, unsigned char* d_depth, bool* d_points_valid, double* d_points_u, double* d_points_v, Eigen::Vector3d* d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py)
+void getimagedata(Eigen::Vector3d* d_faces, unsigned char* d_depth, bool* d_points_valid, double* d_points_u, double* d_points_v, Eigen::Vector3d* d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py, int* face_result)
 {
 	dim3 blocksize(256);
 	dim3 gridsize((M + blocksize.x - 1) / blocksize.x);
 
-	getimagedataDevice << < gridsize, blocksize >> >(d_faces, d_depth, d_points_valid, d_points_u, d_points_v, d_points_C_XYZ, M, width, height, fx, fy, px, py);
+	getimagedataDevice <<< gridsize, blocksize >>>(d_faces, d_depth, d_points_valid, d_points_u, d_points_v, d_points_C_XYZ, M, width, height, fx, fy, px, py,  face_result);
     cudaDeviceSynchronize();
 }
 

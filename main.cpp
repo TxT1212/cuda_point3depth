@@ -62,7 +62,7 @@ std::vector<std::vector<std::string>> ReadSpaceSeparatedText(std::string filepat
     return file_content;
 }
 void getpointsparam(Eigen::Vector3d *d_points_W_XYZ, Eigen::Vector3d *d_points_C_XYZ, double *d_points_u, double *d_points_v, bool *d_points_valid, Eigen::Matrix4d W2L, int N, int width, int height, double fx, double fy, double px, double py);
-void getimagedata(Eigen::Vector3d *d_faces, unsigned char *d_depth, bool *d_points_valid, double *d_points_u, double *d_points_v, Eigen::Vector3d *d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py);
+void getimagedata(Eigen::Vector3d *d_faces, unsigned char *d_depth, bool *d_points_valid, double *d_points_u, double *d_points_v, Eigen::Vector3d *d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py, int *face_result);
 
 int main(int argc, char **argv)
 {
@@ -185,6 +185,7 @@ int main(int argc, char **argv)
     int nbytes_valid = N * sizeof(bool);
     int nbytes_faces = M * sizeof(Vector3d);
     int nbytes_depth = depth.step * depth.rows;
+    int nbytes_face_result = depth.cols * depth.rows * sizeof(int);
 
     //申请device内存
     Vector3d *d_points_W_XYZ;
@@ -192,11 +193,15 @@ int main(int argc, char **argv)
     double *d_points_u;
     double *d_points_v;
     bool *d_points_valid;
+    int *d_face_result;
+    int *face_result;
+    face_result = new int[nbytes_face_result];
     cudaMalloc((void **)&d_points_W_XYZ, nbytes_XYZ);
     cudaMalloc((void **)&d_points_C_XYZ, nbytes_XYZ);
     cudaMalloc((void **)&d_points_u, nbytes_uv);
     cudaMalloc((void **)&d_points_v, nbytes_uv);
     cudaMalloc((void **)&d_points_valid, nbytes_valid);
+    cudaMalloc((void **)&d_face_result, nbytes_face_result);
 
     cudaMemcpy((void *)d_points_W_XYZ, (void *)points_W_XYZ, nbytes_XYZ, cudaMemcpyHostToDevice);
 
@@ -282,7 +287,7 @@ int main(int argc, char **argv)
 
         getpointsparam(d_points_W_XYZ, d_points_C_XYZ, d_points_u, d_points_v, d_points_valid, W2L, N, width, height, fx, fy, px, py);
 
-        getimagedata(d_faces, d_depth, d_points_valid, d_points_u, d_points_v, d_points_C_XYZ, M, width, height, fx, fy, px, py);
+        getimagedata(d_faces, d_depth, d_points_valid, d_points_u, d_points_v, d_points_C_XYZ, M, width, height, fx, fy, px, py, face_result);
 
         cudaMemcpy((void *)(depth.ptr()), (void *)d_depth, nbytes_depth, cudaMemcpyDeviceToHost);
 

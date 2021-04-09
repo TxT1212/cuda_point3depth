@@ -27,8 +27,8 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 CUDA_ADD_EXECUTABLE( ${PROJECT_NAME}
-    # main_ts.cc
-    main.cpp
+    main_ts.cc
+    # main.cpp
 )
 # CUDA_ADD_EXECUTABLE( project_ts
 #     main_ts.cc
