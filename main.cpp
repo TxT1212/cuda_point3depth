@@ -251,7 +251,7 @@ int main(int argc, char **argv)
         {
             string now_frameSelected_str = frameSelected[now_frameSelected][0].substr(frameSelected[now_frameSelected][0].find('1'), 17);
 
-            cout << " " << associations[num][0] << " " << now_frameSelected_str << endl;
+            // cout << " " << associations[num][0] << " " << now_frameSelected_str << endl;
             if (associations[num][0] < now_frameSelected_str)
             {
                 continue;
@@ -266,7 +266,7 @@ int main(int argc, char **argv)
                 exit(-1);
             }
         }
-        cout << "frame:" << num << endl;
+        // cout << "frame:" << num << endl;
 
         // 初始化
         for (int row = 0; row < depth.rows; row++)

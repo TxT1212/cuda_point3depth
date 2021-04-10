@@ -75,9 +75,9 @@ public:
         {
             return true;
         }
-        cout << num << endl;
+        // cout << num << endl;
         string now_frameSelected_str = frameSelected[now_select][0].substr(frameSelected[now_select][0].find('1'), 17);
-        cout << now_frameSelected_str << endl;
+        // cout << now_frameSelected_str << endl;
         if (associations[num][0] < now_frameSelected_str)
         {
             return false;
@@ -278,7 +278,7 @@ int main(int argc, char **argv)
             continue;
         }
 
-        cout << "frame:" << num << endl;
+        // cout << "frame:" << num << endl;
 
         // 初始化
         for (int row = 0; row < depth.rows; row++)
