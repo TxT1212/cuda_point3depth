@@ -21,9 +21,10 @@ py: 365.86145
 campose_path: "opt_pose1.txt"
 associations: "associations_tof.txt"
 cloud_path: "pointcloud_structual.ply"
-frame_select_path: "/home/txt/Desktop/FramesSelect/livingroom3.txt"
-ws_folder: "/media/txt/data2/data2/livingroom3/out/"
+frame_select_path: "/home/txt/Desktop/FramesSelect/stair3.txt"
+ws_folder: "/media/txt/data2/data2/stair3/out/"
 depth_out_path: "HD/Depth"
 pseudocolor_out_path: "HD/RGB"
 frame_name: "frame_new_"
 write_rgb: 1
+

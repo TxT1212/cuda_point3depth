@@ -126,7 +126,7 @@ __device__ GeoPoint getUnitNormal(const Triangle& t)
     return normalize(multiply(vec1, vec2));
 }
 
-__device__ bool isGeoPointInTriangle(const Triangle& t, const GeoPoint& p)
+__device__ bool isGeoPointInTriangle(const Triangle& t, const GeoPoint& p, double& u, double& v)
 {
     GeoPoint vec1 = sub(t.v1, t.v0);
     GeoPoint vec2 = sub(t.v2, t.v0);
@@ -139,7 +139,7 @@ __device__ bool isGeoPointInTriangle(const Triangle& t, const GeoPoint& p)
     double dot12 = dotMultiply(vec2, vec_p);
 
     double inverDeno = double(1) / (dot00 * dot11 - dot01 * dot01);
-    double u, v;
+    // double u, v;
 
     u = (dot11 * dot02 - dot01 * dot12) * inverDeno;
     v = (dot00 * dot12 - dot01 * dot02) * inverDeno;
@@ -200,7 +200,7 @@ void getpointsparam(Eigen::Vector3d* d_points_W_XYZ, Eigen::Vector3d* d_points_C
     cudaDeviceSynchronize();
 }
 
-__global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_depth, bool* d_points_valid, double* d_points_u, double* d_points_v, Eigen::Vector3d* d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py, int* face_result)
+__global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_depth, bool* d_points_valid, double* d_points_u, double* d_points_v, Eigen::Vector3d* d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py, int* face_result, double* u_mat, double* v_mat)
 {
 	const int threadID = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -234,9 +234,11 @@ __global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_de
 						GeoPoint p2(d_points_u[point_num2], d_points_v[point_num2], 0);
 						GeoPoint p3(d_points_u[point_num3], d_points_v[point_num3], 0);
 						GeoPoint p(int(u), int(v), 0);
-						Triangle t_plane(p1, p2, p3);
+                        Triangle t_plane(p1, p2, p3);
+                        double u_face, v_face;
+                        bool is_in = isGeoPointInTriangle(t_plane, p, u_face, v_face);
 
-						if(isGeoPointInTriangle(t_plane, p))
+						if(is_in)
 						{
 							GeoPoint linepoint1((double(u) - px)/fx, (double(v) - py)/fy, 1);
 							GeoPoint linepoint2(0, 0, 0);
@@ -263,6 +265,8 @@ __global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_de
                                 if(old > joint.z * 1000)
                                 {
                                     face_result[width*v + u] = threadID;
+                                    u_mat[width*v + u] = u_face;
+                                    v_mat[width*v + u] = v_face;
                                 }
 
 							}
@@ -280,12 +284,12 @@ __global__ void getimagedataDevice(Eigen::Vector3d* d_faces, unsigned char* d_de
 
 }
 
-void getimagedata(Eigen::Vector3d* d_faces, unsigned char* d_depth, bool* d_points_valid, double* d_points_u, double* d_points_v, Eigen::Vector3d* d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py, int* face_result)
+void getimagedata(Eigen::Vector3d* d_faces, unsigned char* d_depth, bool* d_points_valid, double* d_points_u, double* d_points_v, Eigen::Vector3d* d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py, int* face_result, double* u_mat, double* v_mat)
 {
 	dim3 blocksize(256);
 	dim3 gridsize((M + blocksize.x - 1) / blocksize.x);
 
-	getimagedataDevice <<< gridsize, blocksize >>>(d_faces, d_depth, d_points_valid, d_points_u, d_points_v, d_points_C_XYZ, M, width, height, fx, fy, px, py,  face_result);
+	getimagedataDevice <<< gridsize, blocksize >>>(d_faces, d_depth, d_points_valid, d_points_u, d_points_v, d_points_C_XYZ, M, width, height, fx, fy, px, py,  face_result, u_mat, v_mat);
     cudaDeviceSynchronize();
 }
 

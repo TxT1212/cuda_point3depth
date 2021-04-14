@@ -50,7 +50,7 @@ std::vector<std::vector<std::string>> ReadSpaceSeparatedText(std::string filepat
     return file_content;
 }
 void getpointsparam(Eigen::Vector3d *d_points_W_XYZ, Eigen::Vector3d *d_points_C_XYZ, double *d_points_u, double *d_points_v, bool *d_points_valid, Eigen::Matrix4d W2L, int N, int width, int height, double fx, double fy, double px, double py);
-void getimagedata(Eigen::Vector3d *d_faces, unsigned char *d_depth, bool *d_points_valid, double *d_points_u, double *d_points_v, Eigen::Vector3d *d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py, int *d_face_result);
+void getimagedata(Eigen::Vector3d *d_faces, unsigned char *d_depth, bool *d_points_valid, double *d_points_u, double *d_points_v, Eigen::Vector3d *d_points_C_XYZ, int M, int width, int height, double fx, double fy, double px, double py, int *d_face_result, double *u_mat, double *v_mat);
 
 class Selected_Frame_Controler
 {
@@ -233,17 +233,21 @@ int main(int argc, char **argv)
     int nbytes_valid = N * sizeof(bool);
     int nbytes_faces = M * sizeof(Vector3d);
     int nbytes_depth = depth.step * depth.rows;
+    int nbytes_h_face_uv = depth.cols * depth.rows * sizeof(double);
     int nbytes_face_result = depth.cols * depth.rows * sizeof(int);
-
+    double *h_face_u = new double[depth.cols * depth.rows];
+    double *h_face_v = new double[depth.cols * depth.rows];
+    int *face_result = new int[depth.cols * depth.rows];
     //申请device内存
     Vector3d *d_points_W_XYZ;
     Vector3d *d_points_C_XYZ;
     double *d_points_u;
     double *d_points_v;
+    double *d_face_u;
+    double *d_face_v;
     bool *d_points_valid;
     int *d_face_result;
-    int *face_result;
-    face_result = new int[depth.cols * depth.rows];
+
     cudaMalloc((void **)&d_points_W_XYZ, nbytes_XYZ);
     cudaMalloc((void **)&d_points_C_XYZ, nbytes_XYZ);
     cudaMalloc((void **)&d_points_u, nbytes_uv);
@@ -252,7 +256,8 @@ int main(int argc, char **argv)
 
     cudaMemcpy((void *)d_points_W_XYZ, (void *)points_W_XYZ, nbytes_XYZ, cudaMemcpyHostToDevice);
     cudaMalloc((void **)&d_face_result, nbytes_face_result);
-
+    cudaMalloc((void **)&d_face_u, nbytes_h_face_uv);
+    cudaMalloc((void **)&d_face_v, nbytes_h_face_uv);
     // 申请device内存
     Vector3d *d_faces;
     unsigned char *d_depth;
@@ -278,9 +283,8 @@ int main(int argc, char **argv)
             continue;
         }
 
-        // cout << "frame:" << num << endl;
+        cout << "frame:" << num << endl;
 
-        // 初始化
         for (int row = 0; row < depth.rows; row++)
             for (int col = 0; col < depth.cols; col++)
             {
@@ -299,10 +303,13 @@ int main(int argc, char **argv)
 
         getpointsparam(d_points_W_XYZ, d_points_C_XYZ, d_points_u, d_points_v, d_points_valid, W2L, N, width, height, fx, fy, px, py);
 
-        getimagedata(d_faces, d_depth, d_points_valid, d_points_u, d_points_v, d_points_C_XYZ, M, width, height, fx, fy, px, py, d_face_result);
-
+                cout << row << " " << col << endl;
+        getimagedata(d_faces, d_depth, d_points_valid, d_points_u, d_points_v, d_points_C_XYZ, M, width, height, fx, fy, px, py, d_face_result, d_face_u, d_face_v);
         cudaMemcpy((void *)(depth.ptr()), (void *)d_depth, nbytes_depth, cudaMemcpyDeviceToHost);
         cudaMemcpy((void *)(face_result), (void *)d_face_result, nbytes_face_result, cudaMemcpyDeviceToHost);
+        cudaMemcpy((void *)(h_face_u), (void *)d_face_u, nbytes_h_face_uv, cudaMemcpyDeviceToHost);
+        cudaMemcpy((void *)(h_face_v), (void *)d_face_v, nbytes_h_face_uv, cudaMemcpyDeviceToHost);
+        
 
         for (int row = 0; row < depth.rows; row++)
         {
@@ -315,12 +322,22 @@ int main(int argc, char **argv)
                 }
                 else
                 {
-                    int point_num = faces[face_result[row * depth.cols + col]](0);
-                    Mat now_vec;
-                    eigen2cv(points_rgb[point_num], now_vec);
-                    rgb_out.at<Vec3b>(row, col)[0] = points_rgb[point_num](2);
-                    rgb_out.at<Vec3b>(row, col)[1] = points_rgb[point_num](1);
-                    rgb_out.at<Vec3b>(row, col)[2] = points_rgb[point_num](0);
+                    Vector3d now_face = faces[face_result[row * depth.cols + col]];
+                    double face_u = h_face_u[row * depth.cols + col];
+                    double face_v = h_face_v[row * depth.cols + col];
+
+                    int point_num = now_face(0);
+                    rgb_out.at<Vec3b>(row, col)[0] = points_rgb[point_num](2) * (1 - face_u - face_v);
+                    rgb_out.at<Vec3b>(row, col)[1] = points_rgb[point_num](1) * (1 - face_u - face_v);
+                    rgb_out.at<Vec3b>(row, col)[2] = points_rgb[point_num](0) * (1 - face_u - face_v);
+                    point_num = now_face(1);
+                    rgb_out.at<Vec3b>(row, col)[0] += points_rgb[point_num](2) * face_u;
+                    rgb_out.at<Vec3b>(row, col)[1] += points_rgb[point_num](1) * face_u;
+                    rgb_out.at<Vec3b>(row, col)[2] += points_rgb[point_num](0) * face_u;
+                    point_num = now_face(2);
+                    rgb_out.at<Vec3b>(row, col)[0] += points_rgb[point_num](2) * (face_v);
+                    rgb_out.at<Vec3b>(row, col)[1] += points_rgb[point_num](1) * (face_v);
+                    rgb_out.at<Vec3b>(row, col)[2] += points_rgb[point_num](0) * (face_v);
                 }
             }
         }
@@ -338,6 +355,7 @@ int main(int argc, char **argv)
         int if_write_rgb = Settings["write_rgb"];
         if (if_write_rgb)
         {
+            cout << name << endl;
             imwrite(name, rgb_out);
         }
     }
